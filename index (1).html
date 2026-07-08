@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>학원 설립등록 문서 생성기 — 출장복명서·등록증명서·학원원칙</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#17324d;        /* 관청 남색 */
+  --ink-soft:#3d5a77;
+  --paper:#f5f4ef;      /* 서고 종이색 */
+  --sheet:#ffffff;
+  --line:#d8d4c8;
+  --stamp:#b6372e;      /* 관인 적색 */
+  --ok:#1c7a4b;
+  --bad:#b6372e;
+  --sans:'IBM Plex Sans KR',-apple-system,'Malgun Gothic',sans-serif;
+  --serif:'Nanum Myeongjo','Batang',serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--paper);color:var(--ink);font-size:14px}
+
+/* ── 상단 헤더 ─────────────────────────── */
+header.app{background:var(--ink);color:#fff;padding:14px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+header.app .seal{width:34px;height:34px;border:2px solid var(--stamp);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--stamp);font-family:var(--serif);font-weight:800;font-size:13px;background:#fff}
+header.app h1{font-size:17px;font-weight:700;letter-spacing:-.02em}
+header.app p{font-size:12px;opacity:.75}
+header.app .actions{margin-left:auto;display:flex;gap:8px}
+button{font-family:var(--sans);cursor:pointer;border:none;border-radius:6px;font-size:13px;font-weight:600}
+.btn-print{background:var(--stamp);color:#fff;padding:9px 16px}
+.btn-print:hover{background:#9c2c24}
+.btn-ghost{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);padding:9px 14px}
+.btn-ghost:hover{background:rgba(255,255,255,.12)}
+
+/* ── 레이아웃: 좌 입력 / 우 미리보기 ───── */
+.wrap{display:grid;grid-template-columns:460px 1fr;min-height:calc(100vh - 62px)}
+@media(max-width:1080px){.wrap{grid-template-columns:1fr}}
+.form-pane{background:var(--sheet);border-right:1px solid var(--line);overflow-y:auto;max-height:calc(100vh - 62px)}
+.preview-pane{overflow-y:auto;max-height:calc(100vh - 62px);padding:26px}
+@media(max-width:1080px){.form-pane,.preview-pane{max-height:none}}
+
+/* 입력 섹션 */
+details.sec{border-bottom:1px solid var(--line)}
+details.sec>summary{list-style:none;cursor:pointer;padding:14px 20px;display:flex;align-items:center;gap:10px;font-weight:700;font-size:14px;background:#fbfaf6}
+details.sec>summary::-webkit-details-marker{display:none}
+details.sec>summary .no{font-family:var(--serif);color:var(--stamp);font-size:12px;font-weight:800;min-width:20px}
+details.sec>summary::after{content:"▾";margin-left:auto;color:#999;transition:.15s}
+details.sec:not([open])>summary::after{transform:rotate(-90deg)}
+.sec-body{padding:14px 20px 20px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.field{margin-bottom:10px}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:4px}
+input[type=text],input[type=number],input[type=date],select,textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;font-family:var(--sans);font-size:13px;background:#fff;color:var(--ink)}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--ink-soft);outline-offset:0;border-color:var(--ink-soft)}
+textarea{resize:vertical;min-height:60px;line-height:1.5}
+.hint{font-size:11.5px;color:#8a8574;margin-top:4px;line-height:1.45}
+.badge-rule{display:inline-block;background:#eef2f6;color:var(--ink-soft);border:1px solid #d5dde5;border-radius:4px;padding:2px 7px;font-size:11px;margin:2px 3px 0 0}
+
+/* 행 추가 테이블 */
+table.rows{width:100%;border-collapse:collapse;margin-top:6px}
+table.rows th{font-size:11px;color:var(--ink-soft);text-align:left;padding:4px 4px;border-bottom:1px solid var(--line);font-weight:600}
+table.rows td{padding:3px 3px;vertical-align:middle}
+table.rows input,table.rows select{padding:6px 7px;font-size:12.5px}
+.cap-cell{font-size:12px;text-align:center;white-space:nowrap;color:var(--ink-soft)}
+.del{background:#f2efe8;color:#8a5a52;width:26px;height:26px;border-radius:5px;font-size:14px;line-height:1}
+.del:hover{background:#e8dcd4}
+.add-row{margin-top:8px;background:#eef2f6;color:var(--ink);padding:7px 12px;border:1px dashed #b9c4cf}
+.add-row:hover{background:#e2e9f0}
+.sum-line{margin-top:10px;padding:8px 10px;background:#f7f6f0;border-radius:6px;font-size:12.5px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px}
+.sum-line b{color:var(--stamp)}
+.fit-ok{color:var(--ok);font-weight:700}.fit-bad{color:var(--bad);font-weight:700}
+
+/* 미리보기 탭 */
+.tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.tabs button{padding:9px 18px;border-radius:20px;background:#e9e6dc;color:var(--ink-soft);font-weight:600}
+.tabs button.on{background:var(--ink);color:#fff}
+
+/* ── A4 문서 시트 (공문서 서체) ────────── */
+.sheet{background:#fff;width:210mm;max-width:100%;min-height:270mm;margin:0 auto 30px;padding:20mm 18mm;box-shadow:0 3px 18px rgba(23,50,77,.14);font-family:var(--serif);color:#111;line-height:1.65;font-size:12.5pt}
+.sheet .doc-title{text-align:center;font-size:22pt;font-weight:800;letter-spacing:.35em;margin:6mm 0 10mm}
+.sheet .doc-no{font-size:11pt;margin-bottom:4mm}
+.sheet table.doc{width:100%;border-collapse:collapse;margin:3mm 0;font-size:10.5pt}
+.sheet table.doc th,.sheet table.doc td{border:1px solid #222;padding:4px 6px;text-align:center;vertical-align:middle}
+.sheet table.doc th{background:#f0efe9;font-weight:700}
+.sheet .lbl{background:#f0efe9;font-weight:700}
+.sheet .att-tag{display:inline-block;border:1.5px solid #222;padding:1px 12px;font-weight:800;margin-right:8px}
+.sheet h3.att-h{display:flex;align-items:center;border-bottom:2px solid #222;padding-bottom:3px;margin:0 0 5mm;font-size:14pt}
+.sheet .sign{text-align:center;font-size:15pt;font-weight:800;letter-spacing:.15em;margin:10mm 0 4mm}
+.sheet .notice{border:1px solid #222;padding:4mm;font-size:10pt;line-height:1.7;margin-top:8mm}
+.sheet .right{text-align:right}.sheet .left{text-align:left}
+.sheet .article{margin:2.2mm 0;font-size:11.5pt}
+.sheet .article b.tt{font-weight:800}
+.sheet .sub{margin-left:14px}
+.small{font-size:9.5pt}
+.txtpre{white-space:pre-wrap;text-align:left}
+
+/* ── 인쇄 ──────────────────────────────── */
+@media print{
+  header.app,.form-pane,.tabs,.no-print{display:none!important}
+  body{background:#fff}
+  .wrap{display:block}
+  .preview-pane{max-height:none;overflow:visible;padding:0}
+  .sheet{box-shadow:none;margin:0;width:auto;min-height:auto;page-break-after:always;padding:12mm 14mm}
+  .doc-block{display:none}
+  .doc-block.print-me{display:block}
+}
+</style>
+</head>
+<body>
+
+<header class="app">
+  <div class="seal">印</div>
+  <div>
+    <h1>학원 설립등록 문서 생성기</h1>
+    <p>출장복명서 작성 → 학원설립·운영등록증명서 · 학원원칙 자동 생성 (학원법 5단 조문 기준 내장)</p>
+  </div>
+  <div class="actions">
+    <button class="btn-ghost" onclick="printDoc('all')">전체 인쇄</button>
+    <button class="btn-print" onclick="printDoc('active')">현재 문서 인쇄</button>
+  </div>
+</header>
+
+<div class="wrap">
+<!-- ══════════ 좌측 입력 ══════════ -->
+<div class="form-pane" id="formPane">
+
+<details class="sec" open>
+<summary><span class="no">01</span>기본 정보</summary>
+<div class="sec-body">
+  <div class="grid2">
+    <div class="field"><label>출장일자</label><input type="date" id="tripDate" value=""></div>
+    <div class="field"><label>복명(보고)일자</label><input type="date" id="reportDate" value=""></div>
+  </div>
+  <div class="grid2">
+    <div class="field"><label>조사대상(학원명)</label><input type="text" id="acadName" placeholder="예: 뜸액터스학원"></div>
+    <div class="field"><label>설립자</label><input type="text" id="founder" placeholder="예: 오순태"></div>
+  </div>
+  <div class="field"><label>위치 (평면도·증명서·원칙에 자동 반영)</label><input type="text" id="addr" placeholder="예: 서울특별시 동작구 동작대로17길 5, 201호"></div>
+  <div class="grid2">
+    <div class="field"><label>교육지원청</label><input type="text" id="office" value="서울특별시동작관악교육지원청"></div>
+    <div class="field"><label>담당부서 / 전화</label><input type="text" id="dept" value="평생교육건강과(☎02-810-8366)"></div>
+  </div>
+</div>
+</details>
+
+<details class="sec" open>
+<summary><span class="no">02</span>학원 종류·교습과정 <span style="font-weight:400;font-size:11px;color:#999">(별표3·4 기준 자동)</span></summary>
+<div class="sec-body">
+  <div class="grid2">
+    <div class="field"><label>학원의 종류</label>
+      <select id="acadType"><option>학교교과교습학원</option><option>평생직업교육학원</option></select></div>
+    <div class="field"><label>교습과정 (자동 기준 선택)</label>
+      <select id="course" onchange="applyCourse()"></select></div>
+  </div>
+  <div class="grid2">
+    <div class="field"><label>교습과정 표기명</label><input type="text" id="courseName" placeholder="예: 연기"></div>
+    <div class="field"><label>교과목</label><input type="text" id="subject" placeholder="예: 연기"></div>
+  </div>
+  <div class="field"><label>설립 목적 (원칙 제1조·증명서)</label><input type="text" id="purpose" placeholder="예: 연기 교육"></div>
+  <div id="ruleInfo" class="hint"></div>
+</div>
+</details>
+
+<details class="sec" open>
+<summary><span class="no">03</span>시설 현황 (강의실·실습실·열람실)</summary>
+<div class="sec-body">
+  <table class="rows"><thead><tr><th style="width:96px">구분</th><th>면적(㎡)</th><th style="width:62px">수용인원</th><th style="width:70px">비고(부제 등)</th><th></th></tr></thead>
+  <tbody id="roomRows"></tbody></table>
+  <button class="add-row" onclick="addRoom()">＋ 교습실 추가</button>
+  <div class="hint">수용인원 자동계산 — 강의실: 1㎡당 1명 · 실습실: 1.5㎡당 1명 · 열람실: 1㎡당 0.8명 (조례 제4조, 규칙 제9조)</div>
+
+  <div class="field" style="margin-top:14px"><label>기타 전용면적 (상담실·연구실 등 자유 입력)</label></div>
+  <table class="rows"><thead><tr><th>명칭</th><th>면적(㎡)</th><th style="width:52px">실수</th><th></th></tr></thead>
+  <tbody id="etcRows"></tbody></table>
+  <button class="add-row" onclick="addEtc()">＋ 기타면적 추가</button>
+
+  <div class="sum-line" id="areaSummary"></div>
+</div>
+</details>
+
+<details class="sec" open>
+<summary><span class="no">04</span>설비 및 교구 현황 <span style="font-weight:400;font-size:11px;color:#999">(별표4 자동 생성)</span></summary>
+<div class="sec-body">
+  <div class="field"><label>기준 (별표4 — 교습과정 선택 시 자동)</label><textarea id="equipStd" rows="3"></textarea></div>
+  <div class="field"><label>현황 (담당자 확인 내용)</label><textarea id="equipCur" rows="3" placeholder="예: 무대장치 1대, 스피커 1대, 조명장치 다수"></textarea></div>
+  <div class="grid2">
+    <div class="field"><label>담당자 의견</label><select id="equipFit"><option>적합</option><option>부적합</option><option>해당없음</option></select></div>
+  </div>
+</div>
+</details>
+
+<details class="sec">
+<summary><span class="no">05</span>단위 시설 적합 여부 (자유 입력)</summary>
+<div class="sec-body" id="unitBody"></div>
+</details>
+
+<details class="sec">
+<summary><span class="no">06</span>건축물 적합 여부 (층별 입력)</summary>
+<div class="sec-body">
+  <table class="rows"><thead><tr><th style="width:54px">층</th><th>사용용도</th><th>건축물 용도</th><th>대장면적</th><th>전용면적</th><th style="width:58px">직통계단</th><th></th></tr></thead>
+  <tbody id="bldgRows"></tbody></table>
+  <button class="add-row" onclick="addBldg()">＋ 층 추가</button>
+  <div class="grid2" style="margin-top:10px">
+    <div class="field"><label>건축물 담당자 의견</label><select id="bldgFit"><option>적합</option><option>부적합</option></select></div>
+  </div>
+</div>
+</details>
+
+<details class="sec">
+<summary><span class="no">07</span>교육환경 유해 여부 (연면적 1,650㎡ 기준)</summary>
+<div class="sec-body">
+  <div class="field"><label>건축물 연면적</label>
+    <select id="envMode" onchange="renderEnv();refresh()">
+      <option value="under">1,650㎡ 미만 (전 장소)</option>
+      <option value="over">1,650㎡ 이상 (거리기준 적용)</option>
+    </select></div>
+  <div id="envBody"></div>
+  <div class="grid2">
+    <div class="field"><label>담당자 의견</label><select id="envFit"><option>적합</option><option>부적합</option></select></div>
+  </div>
+  <div class="hint">법 제5조제5항: 연면적 1,650㎡ 이상 건축물은 ①같은 층 20m 이내 ②바로 위·아래층 6m 이내에 유해업소가 있는 경우에만 저촉.</div>
+</div>
+</details>
+
+<details class="sec">
+<summary><span class="no">08</span>조사자 의견·복명자</summary>
+<div class="sec-body">
+  <div class="field"><label>조사자 의견</label><textarea id="opinion">위 학원의 제반시설 설비가 관계규정에 적합한 것을 확인하였습니다.</textarea></div>
+  <div class="grid2">
+    <div class="field"><label>복명자1 (직급 성명)</label><input type="text" id="rep1" placeholder="예: 지방교육행정주사보 이주성"></div>
+    <div class="field"><label>복명자2 (직급 성명)</label><input type="text" id="rep2" placeholder="예: 지방교육행정서기 김동원"></div>
+  </div>
+</div>
+</details>
+
+<details class="sec">
+<summary><span class="no">09</span>등록증명서·학원원칙 추가정보</summary>
+<div class="sec-body">
+  <div class="grid2">
+    <div class="field"><label>등록증명서 번호</label><input type="text" id="regNo" placeholder="예: 제0000호"></div>
+    <div class="field"><label>발급·시행일</label><input type="date" id="issueDate"></div>
+  </div>
+  <div class="grid2">
+    <div class="field"><label>1일 교습시간(분)</label><input type="text" id="dailyMin" value="180분"></div>
+    <div class="field"><label>수료기간</label><input type="text" id="term" value="1개월"></div>
+  </div>
+  <div class="grid2">
+    <div class="field"><label>총 이수시간</label><input type="text" id="totalMin" value="4,560분"></div>
+    <div class="field"><label>비고(주 횟수 등)</label><input type="text" id="weekNote" value="주 1~5회"></div>
+  </div>
+</div>
+</details>
+
+<div style="padding:16px 20px 40px">
+  <button class="btn-print" style="width:100%;padding:12px" onclick="printDoc('all')">문서 3종 전체 인쇄 / PDF 저장</button>
+  <p class="hint" style="margin-top:8px">인쇄 대화상자에서 「PDF로 저장」을 선택하면 결재용 파일이 생성됩니다. 입력값은 브라우저에 자동 저장됩니다.</p>
+</div>
+</div>
+
+<!-- ══════════ 우측 미리보기 ══════════ -->
+<div class="preview-pane">
+  <div class="tabs">
+    <button class="on" data-doc="d1" onclick="showTab(this)">① 출장복명서</button>
+    <button data-doc="d2" onclick="showTab(this)">② 등록증명서</button>
+    <button data-doc="d3" onclick="showTab(this)">③ 학원원칙</button>
+  </div>
+  <div id="d1" class="doc-block"></div>
+  <div id="d2" class="doc-block" style="display:none"></div>
+  <div id="d3" class="doc-block" style="display:none"></div>
+</div>
+</div>
+
+<script>
+/* ════════ 별표3 · 별표4 데이터베이스 (서울시교육청 조례) ════════ */
+const DB = {
+"연기(연극·뮤지컬·오페라 등)":{cat:"기예",fac:{실습실:90},equip:"무대장치, 음향기기, 조명장치",dName:"연기"},
+"음악·국악·실용음악(성악)":{cat:"기예",fac:{실습실:60},equip:"주요 실습용 악기 3대 이상(피아노 과정은 6대 이상)",dName:"음악"},
+"미술":{cat:"기예",fac:{실습실:60},equip:"화판 및 화판걸이(이젤) 또는 실습용 탁자 일시수용능력 인원 1인당 1개 이상, 교습과정에 필요한 교구 2종 이상",dName:"미술"},
+"무용(전통·현대무용)":{cat:"기예",fac:{실습실:70,탈의실:5},equip:"음향기기 1대 이상, 대형거울, 바(bar)(현대무용), 북 또는 장고 등 악기 1개 이상(전통무용)",dName:"무용"},
+"댄스":{cat:"기예",fac:{실습실:70,탈의실:5},equip:"음향기기 1대 이상, 대형거울",dName:"댄스"},
+"서예":{cat:"기예",fac:{실습실:70},equip:"지필묵 10개 이상, 서법도서 1권 이상",dName:"서예"},
+"도예":{cat:"기예",fac:{실습실:70},equip:"실습용 작업대 일시 수용능력 인원 1인당 1조 이상",dName:"도예"},
+"만화":{cat:"기예",fac:{실습실:70},equip:"라이트박스 일시 수용능력 인원 1인당 1조 이상",dName:"만화"},
+"화술·웅변":{cat:"기예",fac:{실습실:70},equip:"마이크 1대 이상, 연단 및 녹음기 1대 이상",dName:"화술"},
+"마술(매직)":{cat:"기예",fac:{실습실:70},equip:"마술 교구 10종 이상",dName:"마술"},
+"바둑":{cat:"기예",fac:{실습실:70},equip:"바둑판(바둑알 포함) 10조 이상, 대형 바둑판 1개",dName:"바둑"},
+"모델":{cat:"기예",fac:{실습실:70},equip:"교습과정상 필요한 설비 및 교구",dName:"모델"},
+"컴퓨터·게임·로봇·정보":{cat:"정보",fac:{실습실:70},equip:"컴퓨터 10대 이상, 주변기기 1대 이상",dName:"컴퓨터"},
+"전산회계":{cat:"직업기술",fac:{실습실:70},equip:"전산회계용 사무기기 또는 컴퓨터 10대 이상, 주변기기, 관련 소프트웨어 1개 이상",dName:"전산회계"},
+"속기":{cat:"직업기술",fac:{실습실:70},equip:"속기용 사무기기 또는 컴퓨터 10대 이상(일시 수용능력 인원 1인당 1대)",dName:"속기"},
+"사진":{cat:"직업기술",fac:{실습실:70,암실:5},equip:"사진기 4종 이상(1,000만 화소 이상 디지털카메라 포함), 확대기 2대 이상, 필름스캐너 1대 이상, 디지털프린터 1대 이상",dName:"사진"},
+"디자인(산업디자인)":{cat:"직업기술",fac:{실습실:90},equip:"과정별: 제도판·실습대(2인당 1대 이상)·실습용 컴퓨터 3대 이상 등",dName:"디자인"},
+"패션디자인":{cat:"직업기술",fac:{실습실:90},equip:"디자인 제도대(2인당 1대), 시청각 기구 1대 이상, 모타 미싱 10대 이상, 패턴 실습대(4인당 1대), 인대(마네킹) 5대 이상, 컴퓨터 2대 이상, 컴퓨터 미싱 3대 이상, 오바로크 2대 이상, 아이롱 3대 이상",dName:"패션디자인"},
+"미용":{cat:"직업기술",fac:{실습실:90},equip:"헤어과정: 인두(마네킹) 20개 이상, 건발기 10조 이상, 파마기 20종, 미안대(거울) 10조 이상, 샴푸대 2대, 세면장 및 급수시설, 실습대(4인용) 6대 이상, 컷트기구 10개, 셋팅기구 10개",dName:"미용"},
+"이용":{cat:"직업기술",fac:{실습실:90},equip:"이발의자 10개, 증기소독기 2조 이상, 건발기 2대 이상, 이발기구·면도·가위 각 10개 이상, 대형거울(의자수 상응), 세면장 및 급수시설",dName:"이용"},
+"조리":{cat:"직업기술",fac:{실습실:90},equip:"조리대(4인당 1대 이상), 냉장고(1,000L 이상) 1대 이상, 오븐기 1대 이상, 요리별 교구 1식 이상, 제독시설",dName:"조리"},
+"제과·제빵":{cat:"직업기술",fac:{실습실:90},equip:"빵슬라이서 1대 이상, 수직형 믹서(중형) 8대 이상, 오븐(2장) 5대 이상, 실습대 8대 이상, 발효실(40장) 1대 이상, 저울(5Kg 이상) 10대 이상, 비중계·당도계·PH미터기·수분측정기 각 1대 이상, 반죽로라 1대, 냉장고(1,000L) 1대 이상, 실습실당 싱크대 2대 이상",dName:"제과제빵"},
+"바리스타":{cat:"직업기술",fac:{실습실:90},equip:"커피머신 1대 이상, 커피그라인더 1대 이상, 로스터(로스팅머신) 1대 이상",dName:"바리스타"},
+"간호조무사":{cat:"직업기술",fac:{강의실:60,실습실:45},equip:"인체모형 1개 이상, 인체해부·생리괘도 각 1부 이상, 시력·색맹표 각 1부 이상, 신장·체중계 각 1개 이상, 주사기 20종 이상, 소독기 중형 1개 이상, 혈압계·청진기 각 1개 이상, 침대 2개 이상, 흡입기 1개 이상, 휠체어 1개 이상, 주사실습용 인체모형, 인공배뇨셑, 기관절개관",dName:"간호조무사"},
+"영상":{cat:"직업기술",fac:{강의실:30,실습실:60},equip:"6mm 디지털 VTR 5대 이상, VHS용 VTR 5대 이상, 베타켐 VTR 2대 이상, 비디오카메라 또는 캠코더 10종 이상, TV 모니터 10대 이상, 조명기구 10종 이상, 간이 편집 자막기 3종 이상, 오디오 더빙용 오디오 set 5종 이상, 논리니어 편집기 3대 이상",dName:"영상"},
+"캐릭터":{cat:"직업기술",fac:{실습실:70},equip:"컴퓨터 10대 이상, 캐릭터 제작 실습에 필요한 프로그램 3종 이상",dName:"캐릭터"},
+"펜글씨":{cat:"경영·사무관리",fac:{실습실:70},equip:"책·걸상 또는 실습용 탁자 일시 수용능력 인원 1인당 1조 이상",dName:"펜글씨"},
+"주산":{cat:"경영·사무관리",fac:{실습실:70},equip:"대형주판 1개 이상, 속도측정 초시계 1개 이상",dName:"주산"},
+"독서실":{cat:"독서",fac:{열람실:120},equip:"열람대 일시 수용능력 인원 1인당 1대",dName:"독서"},
+"입시(보통교과)":{cat:"입시",area:660,equip:"—(이론 교습과정)",dName:"입시"},
+"검정고시":{cat:"입시",area:90,equip:"—(이론 교습과정)",dName:"검정고시"},
+"보습·논술":{cat:"보습",area:70,equip:"—(이론 교습과정)",dName:"보습·논술"},
+"진학상담·지도":{cat:"진학지도",area:70,equip:"—",dName:"진학지도"},
+"외국어(초중고 실용외국어)":{cat:"국제화",area:150,equip:"—",dName:"외국어"},
+"성인 어학":{cat:"국제화",area:150,equip:"—",dName:"어학"},
+"통역·번역":{cat:"국제화",area:70,equip:"—",dName:"통역·번역"},
+"특수교육":{cat:"특수교육",area:70,equip:"—",dName:"특수교육"},
+"경영·사무관리(금융·부동산·부기 등)":{cat:"경영·사무관리",area:70,equip:"—",dName:"경영·사무"},
+"직접 입력":{cat:"기타",area:70,equip:"",dName:""}
+};
+
+/* 수용인원 계산 규칙 */
+const CAP = {강의실:a=>Math.floor(a*1), 실습실:a=>Math.floor(a/1.5), 열람실:a=>Math.floor(a*0.8)};
+const UNIT_MIN = {강의실:"30㎡ 이상 135㎡ 이하", 실습실:"35㎡ 이상", 열람실:"45㎡ 이상"};
+
+/* 단위시설 항목 */
+const UNITS=[["급수시설","정수기 1대, 냉장고 1대"],["화장실","남·여 구분"],["채광·조명시설","조명, 창문"],["환기시설","창문 등"],["냉·난방시설","냉난방기 4대"],["방음시설","방음시설 완비"],["소방시설","소화기 4개, 화재감지기 1개, 비상구유도등(판) 4개"],["지하사용여부","-"]];
+
+let rooms=[], etcs=[], bldgs=[];
+
+/* ── 초기화 ── */
+function init(){
+  const cs=document.getElementById('course');
+  Object.keys(DB).forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=k;cs.appendChild(o)});
+  const today=new Date().toISOString().slice(0,10);
+  ['tripDate','reportDate','issueDate'].forEach(id=>document.getElementById(id).value=today);
+  // 단위시설
+  const ub=document.getElementById('unitBody');
+  ub.innerHTML=UNITS.map((u,i)=>`<div class="grid2" style="margin-bottom:6px">
+    <div class="field"><label>${u[0]} — 현황</label><input type="text" id="u_c_${i}" value="${u[1]}"></div>
+    <div class="field"><label>적합여부</label><select id="u_f_${i}"><option>적합</option><option>부적합</option><option>-</option></select></div></div>`).join('');
+  if(!load()){
+    rooms=[{type:'실습실',area:'',note:''}];
+    etcs=[{name:'상담실',area:'',cnt:1}];
+    bldgs=[{fl:'2층',use:'신청지 등',buse:'제2종근린생활시설(학원) 등',reg:'',net:'',stair:'1개'}];
+  }
+  renderRooms();renderEtcs();renderBldgs();renderEnv();
+  if(!document.getElementById('equipStd').value) applyCourse();
+  document.getElementById('formPane').addEventListener('input',()=>{refresh();save()});
+  document.getElementById('formPane').addEventListener('change',()=>{refresh();save()});
+  refresh();
+}
+
+/* ── 교습과정 적용 ── */
+function applyCourse(){
+  const k=document.getElementById('course').value, d=DB[k];
+  if(!d)return;
+  document.getElementById('equipStd').value = d.fac ? Object.entries(d.fac).map(([t,a])=>`${t} ${a}㎡ 이상`).join(', ')+(d.equip&&d.equip!=='—'?` / ${d.equip}`:'') : (d.equip||'');
+  if(!document.getElementById('courseName').value) document.getElementById('courseName').value=d.dName;
+  if(!document.getElementById('subject').value) document.getElementById('subject').value=d.dName;
+  if(!document.getElementById('purpose').value&&d.dName) document.getElementById('purpose').value=d.dName+' 교육';
+  const ri=document.getElementById('ruleInfo');
+  let html='<b>적용 기준</b> — ';
+  if(d.fac) html+=Object.entries(d.fac).map(([t,a])=>`<span class="badge-rule">${t} 합계 ${a}㎡ 이상 (별표4)</span>`).join('');
+  else html+=`<span class="badge-rule">강의실·실습실·열람실 합계 ${d.area}㎡ 이상 (별표3)</span>`;
+  html+=`<span class="badge-rule">강의실 30~135㎡·1명/㎡</span><span class="badge-rule">실습실 35㎡↑·1명/1.5㎡</span><span class="badge-rule">열람실 45㎡↑·0.8명/㎡</span>`;
+  ri.innerHTML=html;
+  refresh();save();
+}
+
+/* ── 동적 행 ── */
+function addRoom(){rooms.push({type:'실습실',area:'',note:''});renderRooms();refresh();save()}
+function addEtc(){etcs.push({name:'',area:'',cnt:1});renderEtcs();refresh();save()}
+function addBldg(){bldgs.push({fl:'',use:'',buse:'',reg:'',net:'',stair:''});renderBldgs();refresh();save()}
+
+function renderRooms(){
+  document.getElementById('roomRows').innerHTML=rooms.map((r,i)=>{
+    const nm=roomName(i);
+    const cap=r.area?CAP[r.type](parseFloat(r.area)||0):'';
+    return `<tr>
+      <td><select onchange="rooms[${i}].type=this.value;renderRooms();refresh();save()">
+        ${['강의실','실습실','열람실'].map(t=>`<option ${r.type===t?'selected':''}>${t}</option>`).join('')}</select>
+        <div class="hint" style="margin:2px 0 0">${nm}</div></td>
+      <td><input type="number" step="0.01" value="${r.area}" oninput="rooms[${i}].area=this.value;refresh();save();this.closest('tr').querySelector('.cap-cell').textContent=this.value?CAP[rooms[${i}].type](parseFloat(this.value)||0)+'명':''"></td>
+      <td class="cap-cell">${cap!==''?cap+'명':''}</td>
+      <td><input type="text" value="${r.note||''}" oninput="rooms[${i}].note=this.value;refresh();save()" placeholder="1부제"></td>
+      <td><button class="del" onclick="rooms.splice(${i},1);renderRooms();refresh();save()">×</button></td></tr>`;
+  }).join('');
+}
+function roomName(i){
+  const r=rooms[i];let n=0;
+  for(let j=0;j<=i;j++) if(rooms[j].type===r.type)n++;
+  const cnt=rooms.filter(x=>x.type===r.type).length;
+  return cnt>1?r.type+n:r.type;
+}
+function renderEtcs(){
+  document.getElementById('etcRows').innerHTML=etcs.map((e,i)=>`<tr>
+    <td><input type="text" value="${e.name}" placeholder="상담실 / 연구실 / 기타" oninput="etcs[${i}].name=this.value;refresh();save()"></td>
+    <td><input type="number" step="0.01" value="${e.area}" oninput="etcs[${i}].area=this.value;refresh();save()"></td>
+    <td><input type="number" value="${e.cnt}" oninput="etcs[${i}].cnt=this.value;refresh();save()"></td>
+    <td><button class="del" onclick="etcs.splice(${i},1);renderEtcs();refresh();save()">×</button></td></tr>`).join('');
+}
+function renderBldgs(){
+  document.getElementById('bldgRows').innerHTML=bldgs.map((b,i)=>`<tr>
+    <td><input type="text" value="${b.fl}" oninput="bldgs[${i}].fl=this.value;refresh();save()"></td>
+    <td><input type="text" value="${b.use}" oninput="bldgs[${i}].use=this.value;refresh();save()"></td>
+    <td><input type="text" value="${b.buse}" oninput="bldgs[${i}].buse=this.value;refresh();save()"></td>
+    <td><input type="text" value="${b.reg}" oninput="bldgs[${i}].reg=this.value;refresh();save()"></td>
+    <td><input type="text" value="${b.net}" oninput="bldgs[${i}].net=this.value;refresh();save()"></td>
+    <td><input type="text" value="${b.stair}" oninput="bldgs[${i}].stair=this.value;refresh();save()"></td>
+    <td><button class="del" onclick="bldgs.splice(${i},1);renderBldgs();refresh();save()">×</button></td></tr>`).join('');
+}
+function renderEnv(){
+  const m=document.getElementById('envMode').value, eb=document.getElementById('envBody');
+  if(m==='under'){
+    eb.innerHTML=`<div class="field"><label>전 장소 — 유해업소 저촉 여부</label><input type="text" id="env_all" value="유해업소 없음"></div>`;
+  }else{
+    eb.innerHTML=[['env_up','6m 이내 바로 위층'],['env_same','20m 이내 같은 층'],['env_down','6m 이내 바로 아래층']]
+      .map(x=>`<div class="field"><label>${x[1]}</label><input type="text" id="${x[0]}" value="유해업소 없음"></div>`).join('');
+  }
+}
+
+/* ── 합계·판정 ── */
+function calc(){
+  const g=id=>document.getElementById(id).value;
+  const byType={강의실:{a:0,c:0,cap:0},실습실:{a:0,c:0,cap:0},열람실:{a:0,c:0,cap:0}};
+  rooms.forEach(r=>{const a=parseFloat(r.area)||0;if(!a&&!r.area)return;byType[r.type].a+=a;byType[r.type].c++;byType[r.type].cap+=CAP[r.type](a)});
+  const roomTotal=byType.강의실.a+byType.실습실.a+byType.열람실.a;
+  const etcTotal=etcs.reduce((s,e)=>s+(parseFloat(e.area)||0),0);
+  const capTotal=byType.강의실.cap+byType.실습실.cap+byType.열람실.cap;
+  const d=DB[g('course')]||{};
+  // 기준 판정
+  let stdRows=[],fitAll=true;
+  if(d.fac){
+    Object.entries(d.fac).forEach(([t,min])=>{
+      if(byType[t]){
+        const ok=byType[t].a>=min; if(!ok)fitAll=false;
+        stdRows.push({type:t,std:min,cur:byType[t].a,cnt:byType[t].c,ok});
+      }else{ // 탈의실·암실 등 → 기타에서 탐색
+        const m=etcs.find(e=>e.name.includes(t)); const cur=m?parseFloat(m.area)||0:0;
+        const ok=cur>=min; if(!ok)fitAll=false;
+        stdRows.push({type:t,std:min,cur,cnt:m?m.cnt:0,ok,etc:true});
+      }
+    });
+  }else if(d.area){
+    const ok=roomTotal>=d.area; if(!ok)fitAll=false;
+    stdRows.push({type:'강의실·실습실·열람실 계',std:d.area,cur:roomTotal,cnt:byType.강의실.c+byType.실습실.c+byType.열람실.c,ok});
+  }
+  return {byType,roomTotal,etcTotal,total:roomTotal+etcTotal,capTotal,stdRows,fitAll,d};
+}
+
+const fmt=n=>n?Number(n).toLocaleString('ko-KR',{maximumFractionDigits:2}):n===0?'0':'';
+const kd=s=>{if(!s)return '20  .  .  .';const[y,m,dd]=s.split('-');return `${y}.${m.replace(/^0/,'')}.${dd.replace(/^0/,'')}.`};
+const kdDow=s=>{if(!s)return '';const dt=new Date(s+'T00:00');return kd(s).slice(0,-1)+'.('+'일월화수목금토'[dt.getDay()]+')'};
+const kdLong=s=>{if(!s)return '    년   월   일';const[y,m,dd]=s.split('-');return `${y}년 ${+m}월 ${+dd}일`};
+const esc=s=>(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+
+/* ── 문서 렌더링 ── */
+function refresh(){
+  const g=id=>esc(document.getElementById(id).value);
+  const c=calc();
+  // 좌측 합계 표시
+  document.getElementById('areaSummary').innerHTML=
+    `<span>교습실 ${fmt(c.roomTotal)}㎡ · 기타 ${fmt(c.etcTotal)}㎡ · <b>전용면적 계 ${fmt(c.total)}㎡</b></span>
+     <span>일시수용인원 <b>${c.capTotal}명</b> ${c.stdRows.length?`· 시설기준 <span class="${c.fitAll?'fit-ok':'fit-bad'}">${c.fitAll?'적합':'미달'}</span>`:''}</span>`;
+
+  const name=g('acadName')||'○○학원', addr=g('addr')||'　', founder=g('founder')||'　';
+  const cname=g('courseName')||'　', subj=g('subject')||cname, purpose=g('purpose')||'　';
+
+  /* ① 출장복명서 */
+  const stdTable=c.stdRows.map(r=>`<tr><td>${r.type}${r.etc?'(기타)':''}</td><td>${r.std}</td><td>${fmt(r.cur)}</td><td>${r.cnt?r.cnt+'실':'-'}</td><td>${r.ok?'적합':'<span style="color:#b6372e">미달</span>'}</td></tr>`).join('');
+  const etcT=etcs.filter(e=>e.name||e.area).map(e=>`<tr><td>${esc(e.name)}</td><td>-</td><td>${fmt(parseFloat(e.area)||0)}</td><td>${e.cnt}실</td><td>-</td></tr>`).join('');
+  const unitT=UNITS.map((u,i)=>{const cur=esc(document.getElementById('u_c_'+i).value),f=document.getElementById('u_f_'+i).value;
+    return {t:u[0],cur,f}});
+  let unitHtml='';for(let i=0;i<unitT.length;i+=2){const a=unitT[i],b=unitT[i+1];
+    unitHtml+=`<tr><td class="lbl">${a.t}</td><td>${a.cur}</td><td>${a.f}</td>${b?`<td class="lbl">${b.t}</td><td>${b.cur}</td><td>${b.f}</td>`:'<td colspan=3></td>'}</tr>`;}
+  const bldgT=bldgs.map(b=>`<tr><td>${esc(b.fl)}</td><td>${esc(b.use)}</td><td>${esc(b.buse)}</td><td>${esc(b.reg)||'-'}</td><td>${esc(b.net)||'-'}</td><td>${esc(b.stair)||'-'}</td></tr>`).join('');
+  const envMode=document.getElementById('envMode').value;
+  const ev=id=>{const el=document.getElementById(id);return el?esc(el.value):'-'};
+  const envRows= envMode==='under'
+    ? `<tr><td>1,650㎡ 미만</td><td>전 장소</td><td>${ev('env_all')}</td><td rowspan="1">${g('envFit')}</td></tr>`
+    : `<tr><td rowspan="3">1,650㎡ 이상</td><td>6m 이내 바로 위층</td><td>${ev('env_up')}</td><td rowspan="3">${g('envFit')}</td></tr>
+       <tr><td>20m 이내 같은 층</td><td>${ev('env_same')}</td></tr>
+       <tr><td>6m 이내 바로 아래층</td><td>${ev('env_down')}</td></tr>`;
+  const capRule = `${c.capTotal}명(강의실 1㎡당 1명, 실습실 1.5㎡당 1명, 열람실 1㎡당 0.8명 이하)`;
+
+  document.getElementById('d1').innerHTML=`<div class="sheet">
+    <div class="doc-title" style="letter-spacing:.5em">출 장 복 명 서</div>
+    <p class="article">&nbsp;${kdDow(document.getElementById('tripDate').value)} 명에 의하여 우리교육청 관내 가칭 『${name}』의 신규 설립 신청 건에 대한 현지 조사를 실시하고 그 결과를 다음과 같이 보고합니다.</p>
+    <p class="article"><b class="tt">1. 조사대상</b> : ${name} [설립자: ${founder}]</p>
+    <p class="article"><b class="tt">2. 위&nbsp;&nbsp;&nbsp;치</b> : ${addr}</p>
+    <p class="article"><b class="tt">3. 조사내용</b></p>
+    <p class="article sub"><b>가. 시설 및 교구 현황</b> (조례 제5조)</p>
+    <table class="doc"><tr><th>시&nbsp;설</th><th>기준(㎡)</th><th>현황(㎡)</th><th>비고</th><th>담당자 의견</th></tr>
+      ${stdTable}${etcT}
+      <tr><td class="lbl">전용면적 합계</td><td>-</td><td><b>${fmt(c.total)}</b></td><td>-</td><td>-</td></tr></table>
+    <table class="doc"><tr><th>설비 및 교구 기준(별표4)</th><th>현황</th><th>담당자 의견</th></tr>
+      <tr><td class="txtpre small" style="width:42%">${g('equipStd')||'-'}</td><td class="txtpre small">${g('equipCur')||'-'}</td><td>${g('equipFit')}</td></tr></table>
+    <p class="article small">&nbsp;일시수용능력인원: ${capRule}</p>
+    <p class="article sub"><b>나. 단위 시설 적합 여부</b> (법 제8조, 조례 제3조 및 제4조)</p>
+    <table class="doc"><tr><th>구분</th><th>현황</th><th>적합여부</th><th>구분</th><th>현황</th><th>적합여부</th></tr>${unitHtml}</table>
+    <p class="article sub"><b>다. 건축물 적합 여부</b> (건축법 시행령 제3조의5 및 제34조제2항)</p>
+    <table class="doc"><tr><th>층별</th><th>사용 용도</th><th>건축물 용도</th><th>대장면적(㎡)</th><th>전용면적(㎡)</th><th>직통계단</th></tr>
+      ${bldgT}
+      <tr><td class="lbl">합계</td><td>-</td><td>-</td><td>${fmt(bldgs.reduce((s,b)=>s+(parseFloat(b.reg)||0),0))||'-'}</td><td>${fmt(bldgs.reduce((s,b)=>s+(parseFloat(b.net)||0),0))||'-'}</td><td>조사자 의견: ${g('bldgFit')}</td></tr></table>
+    <p class="article sub"><b>라. 교육 환경 유해 여부</b> (법 제5조, 교육환경 보호에 관한 법률 제9조)</p>
+    <table class="doc"><tr><th>건축물 연면적</th><th>저촉 범위</th><th>저촉 여부</th><th>담당자 의견</th></tr>${envRows}</table>
+    <p class="article"><b class="tt">4. 조사자 의견</b>: ${g('opinion')}</p>
+    <p class="article">&nbsp;붙임&nbsp; 시설평면도 1부.</p>
+    <p class="right" style="margin-top:8mm;font-size:12pt">${kd(document.getElementById('reportDate').value)}</p>
+    <p class="right" style="font-size:12pt">위 복명자 : ${g('rep1')||'　'} (인)</p>
+    <p class="right" style="font-size:12pt">${g('rep2')?g('rep2')+' (인)':''}</p>
+  </div>`;
+
+  /* ② 등록증명서 */
+  document.getElementById('d2').innerHTML=`<div class="sheet">
+    <p class="doc-no">&nbsp;${g('regNo')||'제&nbsp;&nbsp;&nbsp;&nbsp;호'}</p>
+    <div class="doc-title" style="letter-spacing:.12em;font-size:20pt">학원설립․운영등록증명서</div>
+    <p class="article" style="font-size:13pt">&nbsp;1. 목&nbsp;&nbsp;&nbsp;적: ${purpose}</p>
+    <p class="article" style="font-size:13pt">&nbsp;2. 명&nbsp;&nbsp;&nbsp;칭: ${name}</p>
+    <p class="article" style="font-size:13pt">&nbsp;3. 설 립 자: ${founder}</p>
+    <p class="article" style="font-size:13pt">&nbsp;4. 위&nbsp;&nbsp;&nbsp;치: ${addr}</p>
+    <p class="article" style="font-size:13pt">&nbsp;5. 학원의 종류 및 교습과정: ${g('acadType')} / ${cname}</p>
+    <p class="article" style="font-size:13pt">&nbsp;6. 일시수용인원: ${c.capTotal}명(정원 ${c.capTotal}명)</p>
+    <p class="article" style="margin-top:8mm">&nbsp;「학원의 설립․운영 및 과외교습에 관한 법률」 제6조에 따라 위와 같이 학원으로 등록하였습니다.</p>
+    <p class="right" style="margin:10mm 0 6mm;font-size:12pt">${kdLong(document.getElementById('issueDate').value)}</p>
+    <div class="sign">${g('office')}교육장</div>
+    <div class="notice"><b>【유의사항】</b><br>
+     1. 관계규정을 준수하고, 학원(독서실) 운영은 원칙에 정하는 바에 따라 운영하시기 바랍니다.<br>
+     2. 학원(독서실) 폐원 시 또는 1개월 이상 휴원 시, 1개월 이내에 신고하지 않을 경우 과태료를 부과하오니 유의하시기 바랍니다. (미신고 시 과태료 최고 300만원)<br>
+     ※ 담당부서: ${g('dept')}</div>
+  </div>`;
+
+  /* ③ 학원원칙 */
+  const validRooms=rooms.filter(r=>parseFloat(r.area)>0);
+  const roomRowsHtml=validRooms.map((r,i)=>{
+    const idx=rooms.indexOf(r);
+    const cap=CAP[r.type](parseFloat(r.area));
+    return `<tr>${i===0?`<td rowspan="${validRooms.length}">${cname}</td><td rowspan="${validRooms.length}">${subj}</td>`:''}
+      <td>${roomName(idx)}</td><td>${cap}명</td><td>${cap}명</td><td>${esc(r.note)||''}</td></tr>`;
+  }).join('');
+  const typeCnt={};validRooms.forEach(r=>typeCnt[r.type]=(typeCnt[r.type]||0)+1);
+  const cntStr=Object.entries(typeCnt).map(([t,n])=>`${t} ${n}실`).join(', ')||'-';
+
+  document.getElementById('d3').innerHTML=`<div class="sheet">
+    <div class="doc-title" style="letter-spacing:.4em;font-size:20pt">학 원 원 칙</div>
+    <p class="article"><b class="tt">제1조(목적)</b> 이 학원은 ${purpose}을(를) 실시함을 목적으로 한다.</p>
+    <p class="article"><b class="tt">제2조(명칭)</b> 이 학원은 ${name}이라 한다.</p>
+    <p class="article"><b class="tt">제3조(위치)</b> 이 학원은 ${addr}에 둔다.</p>
+    <p class="article"><b class="tt">제4조(정원)</b> 이 학원의 교습과정별 일시수용능력인원과 정원은 다음과 같다.</p>
+    <table class="doc"><tr><th>교습과정</th><th>교과목</th><th>구분</th><th>일시 수용능력 인원</th><th>정&nbsp;원</th><th>비&nbsp;고</th></tr>
+      ${roomRowsHtml||'<tr><td colspan="6">-</td></tr>'}
+      <tr><td colspan="2" class="lbl">총&nbsp;계</td><td>총 ${validRooms.length}실<br><span class="small">(${cntStr})</span></td><td><b>${c.capTotal}명</b></td><td><b>${c.capTotal}명</b></td><td></td></tr></table>
+    <p class="article"><b class="tt">제5조(교습과정)</b> 이 학원의 교습과정은 다음과 같다.</p>
+    <table class="doc"><tr><th>교습과정</th><th>1일교습시간</th><th>수료기간</th><th>과목명</th><th>총이수시간</th><th>비&nbsp;고</th></tr>
+      <tr><td>${cname}</td><td>${g('dailyMin')}</td><td>${g('term')}</td><td>${subj}</td><td>${g('totalMin')}</td><td>${g('weekNote')}</td></tr></table>
+    <p class="small">※ 1일 교습시간, 수료기간, 총 이수시간란은 1개월 이상 교습과정의 경우에만 기재하고 이외에는 학원설립․운영자가 자율적으로 운영하도록 한다.<br>※ 단, 그 밖의 교과목 변경은 교습비등 변경 등록으로 대신한다.</p>
+    <p class="article"><b class="tt">제6조(수료)</b><br><span class="sub">① 이 학원의 수료 인정은 출석일수, 이수시간 및 평상시의 성적을 고려하여 정한다.<br>② 수료에 필요한 출석일수와 이수시간은 제5조에 따른 수료기간 및 총 이수시간수의 3분의 2 이상으로 한다.</span></p>
+    <p class="article"><b class="tt">제7조(휴강일)</b><br><span class="sub">① 이 학원의 휴강일은 다음과 같다.<br>&nbsp;1. 국경일과 공휴일&nbsp;&nbsp;2. 정기휴일&nbsp;&nbsp;3. 개원기념일<br>② 제1항 각 호 외에 비상재변과 그 밖의 특별한 사정이 발생한 때에는 임시 휴강을 할 수 있다.<br>③ 휴강일이라도 필요한 때에는 교습할 수 있다.</span></p>
+    <p class="article"><b class="tt">제8조(교습비등)</b><br><span class="sub">① 이 학원의 교습비등은 교육장에게 등록한 금액의 범위에서 징수한다.<br>② 이미 납입된 교습비등 중 수강하지 않은 월의 교습비등은 반환함을 원칙으로 한다. 다만, 「학원의 설립․운영 및 과외교습에 관한 법률」 제18조와 같은 법률 시행령 제18조제3항에 따라 그 사유 발생일부터 5일 이내에 반환한다.<br>③ 다음 각 호의 어느 하나에 해당하는 자에 대해서는 교습비등을 면제 또는 감액할 수 있다.<br>&nbsp;1. 근로청소년 등 경제사정이 곤란한 자&nbsp;&nbsp;2. 천재지변 등의 사유로 교습비등의 납입이 곤란한 자<br>&nbsp;3. 보훈대상자나 그 자녀&nbsp;&nbsp;4. 해당 교습과목에 재능이 탁월한 자 등</span></p>
+    <p class="article"><b class="tt">제9조(시행세칙)</b> 이 원칙의 시행에 필요한 세부사항은 따로 정하여 시행한다.</p>
+    <p class="article" style="text-align:center;font-weight:800;letter-spacing:.3em;margin-top:6mm">부&nbsp;&nbsp;칙</p>
+    <p class="article">이 원칙은 ${kdLong(document.getElementById('issueDate').value)}부터 시행한다.</p>
+  </div>`;
+}
+
+/* ── 탭·인쇄·저장 ── */
+function showTab(btn){
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  ['d1','d2','d3'].forEach(id=>document.getElementById(id).style.display = id===btn.dataset.doc?'block':'none');
+}
+function printDoc(mode){
+  refresh();
+  document.querySelectorAll('.doc-block').forEach(d=>d.classList.remove('print-me'));
+  if(mode==='all') document.querySelectorAll('.doc-block').forEach(d=>d.classList.add('print-me'));
+  else document.querySelector('.tabs button.on') && document.getElementById(document.querySelector('.tabs button.on').dataset.doc).classList.add('print-me');
+  window.print();
+}
+/* localStorage */
+function save(){
+  const data={rooms,etcs,bldgs,fields:{}};
+  document.querySelectorAll('#formPane input,#formPane select,#formPane textarea').forEach(el=>{if(el.id)data.fields[el.id]=el.value});
+  localStorage.setItem('hakwonDoc',JSON.stringify(data));
+}
+function load(){
+  try{
+    const data=JSON.parse(localStorage.getItem('hakwonDoc'));
+    if(!data)return false;
+    rooms=data.rooms||[];etcs=data.etcs||[];bldgs=data.bldgs||[];
+    if(data.fields.envMode){document.getElementById('envMode').value=data.fields.envMode;renderEnv()}
+    Object.entries(data.fields||{}).forEach(([k,v])=>{const el=document.getElementById(k);if(el)el.value=v});
+    return rooms.length>0;
+  }catch(e){return false}
+}
+init();
+</script>
+</body>
+</html>
